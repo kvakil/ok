@@ -1,11 +1,8 @@
 import os
 import logging
 
-from markdown import markdown
 from flask import Flask, render_template, g, request, redirect
-from flask import Markup
 from flask_rq import RQ
-from flask_wtf.csrf import CsrfProtect
 from webassets.loaders import PythonLoader as PythonAssetsLoader
 from werkzeug.contrib.fixers import ProxyFix
 
@@ -27,7 +24,6 @@ from server.extensions import (
     cache,
     csrf,
     debug_toolbar,
-    oauth_provider,
     sentry
 )
 
@@ -60,30 +56,6 @@ def create_app(default_config_path=None):
                     event_id=g.sentry_event_id,
                     public_dsn=sentry.client.get_public_dsn('https')
                 ), 500
-
-            def redirect_to_ssl():
-                criteria = [
-                    request.is_secure,
-                    app.debug,
-                    app.testing,
-                    request.headers.get('X-Forwarded-Proto', 'http') == 'https',
-                    request.path.startswith('/api')
-                ]
-                if not any(criteria):
-                    if request.url.startswith('http://'):
-                        url = request.url.replace('http://', 'https://', 1)
-                        code = 302
-                        r = redirect(url, code=code)
-                        return r
-
-            def add_hsts(response):
-                if request.is_secure:
-                    response.headers.setdefault('Strict-Transport-Security', hsts_policy = 'max-age={0}'.format(30))
-                return response
-
-            app.before_request(redirect_to_ssl)
-            app.after_request(add_hsts)
-
 
         # In production mode, add log handler to sys.stderr.
         app.logger.addHandler(logging.StreamHandler())
